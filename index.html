@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>La magia del análisis léxico</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+<canvas id="bg"></canvas>
+
+<div id="viewport">
+<div id="world">
+<svg id="links"></svg>
+
+<!-- ===================== q0 · PORTADA ===================== -->
+<section class="scene" id="q0" data-x="0" data-y="0" data-r="0" data-s="1.15" data-title="Inicio">
+  <div class="inner portada">
+    <div class="pill">Construcción de Compiladores · Universidad del Valle de Guatemala</div>
+    <h1 class="hero">¿Cómo sabe la computadora que <span class="squiggle">escribiste mal</span> una palabra?</h1>
+    <p class="hero-sub">(La magia del <span class="grad">análisis léxico</span>)</p>
+    <div class="hero-demo">
+      <div class="typed-word" id="heroWord"></div>
+      <svg id="heroFsm"></svg>
+      <div class="verdict" id="heroVerdict"></div>
+    </div>
+    <div class="hint">Presiona <kbd>→</kbd> o <kbd>Espacio</kbd> para avanzar · <kbd>M</kbd> mapa · <kbd>N</kbd> notas · <kbd>H</kbd> ocultar controles</div>
+  </div>
+</section>
+
+<!-- ===================== q1 · GANCHO ===================== -->
+<section class="scene" id="q1" data-x="2500" data-y="-200" data-r="-3" data-title="La pregunta">
+  <div class="inner">
+    <div class="kicker">q1 · El problema</div>
+    <h2>Todos los días, una máquina <span class="grad">lee</span> lo que escribes</h2>
+    <div class="hook-grid">
+      <div class="window editor">
+        <div class="win-bar"><i></i><i></i><i></i><span>main.c</span></div>
+        <pre class="code" id="hookCode"></pre>
+        <div class="win-status" id="hookStatus"></div>
+      </div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="bubble in">¿Ya vienes a la clase de compis?</div>
+          <div class="bubble out" id="hookMsg"></div>
+          <div class="suggest" id="hookSuggest"><span>estás</span><span>está</span><span>estas</span></div>
+          <div class="kbd-mock" id="hookKbd"></div>
+        </div>
+      </div>
+      <div class="questions">
+        <div class="q frag">¿Quién lee primero tu código?</div>
+        <div class="q frag">¿Cómo decide dónde empieza y dónde termina una «palabra»?</div>
+        <div class="q frag">¿Y qué tiene que ver una máquina expendedora con todo esto?</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== q2 · PIPELINE ===================== -->
+<section class="scene" id="q2" data-x="4900" data-y="150" data-r="2" data-title="Fases del compilador">
+  <div class="inner">
+    <div class="kicker">q2 · El viaje de tu código</div>
+    <h2>Un compilador trabaja por <span class="grad">fases</span>… y la primera es la nuestra</h2>
+    <div class="pipeline" id="pipeline">
+      <div class="phase lex" data-desc="Análisis léxico (scanner): agrupa los caracteres en lexemas y produce tokens. Descarta espacios y comentarios. Es la ÚNICA fase que ve el texto carácter por carácter."><span class="n">1</span><br>Análisis léxico<small>caracteres → tokens</small></div>
+      <div class="phase" data-desc="Análisis sintáctico (parser): revisa que los tokens sigan la gramática y construye el árbol sintáctico."><span class="n">2</span><br>Análisis sintáctico<small>tokens → árbol</small></div>
+      <div class="phase" data-desc="Análisis semántico: ¿tiene sentido? Tipos compatibles, variables declaradas, funciones que existen."><span class="n">3</span><br>Análisis semántico<small>¿tiene sentido?</small></div>
+      <div class="phase" data-desc="Generación de código intermedio: traduce el árbol a una representación sencilla, como código de tres direcciones."><span class="n">4</span><br>Código intermedio<small>árbol → IR</small></div>
+      <div class="phase" data-desc="Optimización: mejora el código intermedio (quitar cálculos repetidos, constantes, código muerto…)."><span class="n">5</span><br>Optimización<small>IR → mejor IR</small></div>
+      <div class="phase" data-desc="Generación de código: produce instrucciones de la máquina destino y asigna registros."><span class="n">6</span><br>Generación de código<small>IR → máquina</small></div>
+    </div>
+    <div class="brackets"><span>FRONT-END · análisis</span><span class="be">BACK-END · síntesis</span></div>
+    <div class="pipe-detail">
+      <div class="pipe-flow">
+        <div class="src-chip"><span class="lbl">entrada: flujo de caracteres</span></div>
+        <div class="charstream" id="pipeChars"></div>
+        <div class="arrow-down">↓ el analizador léxico agrupa, clasifica y descarta espacios</div>
+        <div class="tokstream" id="pipeToks"></div>
+        <div class="phase-desc" id="phaseDesc">Haz clic en cualquier fase.</div>
+      </div>
+      <div class="card symtab">
+        <h3>Tabla de símbolos</h3>
+        <table><thead><tr><th>#</th><th>lexema</th></tr></thead><tbody id="pipeSym"></tbody></table>
+        <div class="row" style="margin-top:14px"><button class="btn" id="pipeAgain">↻ Repetir</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== q3 · HISTORIA ===================== -->
+<section class="scene" id="q3" data-x="7300" data-y="-100" data-r="-2" data-title="Historia">
+  <div class="inner">
+    <div class="kicker">q3 · Breve historia de los autómatas</div>
+    <h2>De los relojes de agua a <span class="grad">grep</span> y tu autocorrector</h2>
+    <div class="timeline" id="timeline"></div>
+    <div class="card tl-detail" id="tlDetail"></div>
+    <div class="tl-hint"><kbd>→</kbd> siguiente hito · clic en cualquier año</div>
+  </div>
+</section>
+
+<!-- ===================== q4 · DEFINICIÓN ===================== -->
+<section class="scene" id="q4" data-x="9700" data-y="200" data-r="3" data-title="¿Qué es un autómata?">
+  <div class="inner">
+    <div class="kicker">q4 · ¿Qué es un autómata finito?</div>
+    <h2>Una máquina con memoria mínima: <span class="grad">solo recuerda su estado</span></h2>
+    <div class="grid-def">
+      <div class="card def-card">
+        <p class="lead">Lee símbolos <b>uno por uno</b>. Según el <b>estado</b> en el que está y el <b>símbolo</b> que lee, salta a otro estado. Nada más.</p>
+        <div class="tuple">M = ( <span data-part="Q">Q</span>, <span data-part="S">Σ</span>, <span data-part="d">δ</span>, <span data-part="q0">q₀</span>, <span data-part="F">F</span> )</div>
+        <ul class="tuple-list">
+          <li data-part="Q"><b>Q</b>estados: {Bloqueado, Desbloqueado}</li>
+          <li data-part="S"><b>Σ</b>alfabeto de entrada: {moneda, empujar}</li>
+          <li data-part="d"><b>δ</b>transiciones: δ(estado, símbolo) → estado</li>
+          <li data-part="q0"><b>q₀</b>estado inicial: Bloqueado</li>
+          <li data-part="F"><b>F</b>estados de aceptación. En un lexer significan «ya leí una palabra válida».</li>
+        </ul>
+      </div>
+      <div class="turn-sim">
+        <svg id="turnFsm"></svg>
+        <div class="turn-art-wrap">
+          <svg id="turnArt" viewBox="0 0 170 200">
+            <rect x="60" y="20" width="50" height="170" rx="12" fill="#2b1a5e" stroke="#8b5cf6" stroke-width="2"/>
+            <circle id="turnLed" cx="85" cy="40" r="9" fill="#fb7185"/>
+            <g class="bars">
+              <circle cx="85" cy="90" r="12" fill="#a78bfa"/>
+              <line x1="85" y1="90" x2="160" y2="90" stroke="#c4b5fd" stroke-width="9" stroke-linecap="round"/>
+              <line x1="85" y1="90" x2="47.5" y2="155" stroke="#c4b5fd" stroke-width="9" stroke-linecap="round"/>
+              <line x1="85" y1="90" x2="47.5" y2="25" stroke="#c4b5fd" stroke-width="9" stroke-linecap="round"/>
+            </g>
+          </svg>
+          <div class="turn-ctrl">
+            <button class="btn primary" id="turnCoin">● Moneda</button>
+            <button class="btn" id="turnPush">➜ Empujar</button>
+            <button class="btn ghost" id="turnReset">↺ Reiniciar</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <table class="dtable" id="turnTable">
+            <tr><th></th><th>moneda</th><th>empujar</th></tr>
+            <tr><td class="rh">Bloqueado</td><td data-k="L:coin">Desbloq.</td><td data-k="L:push">Bloqueado</td></tr>
+            <tr><td class="rh">Desbloq.</td><td data-k="U:coin">Desbloq.</td><td data-k="U:push">Bloqueado</td></tr>
+          </table>
+          <div class="log" id="turnLog" style="height:96px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== q5 · LABORATORIO ===================== -->
+<section class="scene" id="q5" data-x="9900" data-y="2300" data-r="-2" data-title="Laboratorio">
+  <div class="inner">
+    <div class="kicker">q5 · Laboratorio: autómatas de la vida diaria</div>
+    <h2>Están <span class="grad">en todas partes</span> (pruébalos)</h2>
+    <div class="tabs" id="labTabs">
+      <button data-tab="vend" class="on">Máquina expendedora</button>
+      <button data-tab="traffic">Semáforo</button>
+      <button data-tab="pin">Cerradura con PIN</button>
+      <button data-tab="div3">Calculadora: ¿divisible entre 3?</button>
+    </div>
+    <div class="tabpanes">
+      <!-- expendedora -->
+      <div class="pane on" data-pane="vend">
+        <div class="pane-left">
+          <div class="vend" id="vendBox">
+            <div class="vend-glass"><div class="can"></div><div class="can c2"></div><div class="can c3"></div><div class="can c2"></div><div class="can c3"></div><div class="can"></div></div>
+            <div class="vend-side">
+              <div class="vend-display" id="vendDisplay">Q0.00<small>precio: Q2.00</small></div>
+              <div class="vend-slot">ranura</div>
+              <div class="vend-slot" id="vendChange">vuelto</div>
+            </div>
+            <div class="vend-tray" id="vendTray"></div>
+          </div>
+          <div class="row">
+            <button class="btn primary" data-coin="50">+ 50 centavos</button>
+            <button class="btn primary" data-coin="100">+ Q1.00</button>
+            <button class="btn" id="vendCancel">Cancelar</button>
+          </div>
+          <p class="note">Máquina de <b>Mealy</b>: la salida (soltar lata, dar vuelto) depende del estado <i>y</i> de la entrada. No guarda cada moneda: solo cuánto crédito lleva.</p>
+        </div>
+        <div class="pane-right"><svg id="vendFsm"></svg><div class="log" id="vendLog"></div></div>
+      </div>
+      <!-- semáforo -->
+      <div class="pane" data-pane="traffic">
+        <div class="pane-left">
+          <div class="row" style="align-items:flex-start;gap:30px">
+            <div class="traffic"><div class="lamp r"></div><div class="lamp y"></div><div class="lamp g on"></div></div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <button class="btn primary" id="tlTick">⏱ Pasa el tiempo</button>
+              <button class="btn" id="tlPed">Botón de peatón</button>
+              <button class="btn" id="tlAuto">▶ Automático</button>
+              <div class="ped" id="tlPedTxt">Peatón: espere</div>
+            </div>
+          </div>
+          <p class="note">Máquina de <b>Moore</b>: la salida (qué luz se enciende) depende <i>solo</i> del estado. El botón de peatón es otra entrada del alfabeto.</p>
+        </div>
+        <div class="pane-right"><svg id="tlFsm"></svg><div class="log" id="tlLog"></div></div>
+      </div>
+      <!-- PIN -->
+      <div class="pane" data-pane="pin">
+        <div class="pane-left">
+          <div class="pin-display" id="pinDisplay">_ _ _ _</div>
+          <div class="keypad" id="pinPad"></div>
+          <p class="note">La clave es <b class="mono">2026</b>. Fíjate: si escribes <span class="mono">2 0 2 2</span>, el último 2 no se desperdicia, ¡puede ser el inicio de un nuevo intento! (la misma idea del algoritmo KMP).</p>
+        </div>
+        <div class="pane-right"><svg id="pinFsm"></svg><div class="log" id="pinLog"></div></div>
+      </div>
+      <!-- divisible entre 3 -->
+      <div class="pane" data-pane="div3">
+        <div class="pane-left">
+          <div class="bin-tape" id="binTape">&nbsp;</div>
+          <div class="row">
+            <button class="btn primary" data-bit="0">0</button>
+            <button class="btn primary" data-bit="1">1</button>
+            <button class="btn ghost" id="binReset">↺</button>
+          </div>
+          <div class="row">
+            <input class="input" id="binNum" type="number" min="0" max="999999" value="21" style="width:150px">
+            <button class="btn" id="binRun">Probar número</button>
+          </div>
+          <div class="verdict" id="binVerdict"></div>
+          <p class="note">Lee el número en binario, bit por bit. No guarda el número: solo el <b>residuo</b>. Con 3 estados decide sobre números de cualquier tamaño: δ(r, b) = (2r + b) mod 3.</p>
+        </div>
+        <div class="pane-right"><svg id="divFsm"></svg><div class="log" id="divLog"></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== q6 · ANALOGÍAS ===================== -->
+<section class="scene" id="q6" data-x="7500" data-y="2000" data-r="2" data-title="Analogías">
+  <div class="inner">
+    <div class="kicker">q6 · Más analogías</div>
+    <h2>Si tiene <span class="grad">pasos</span> y reacciona a <span class="grad">eventos</span>, probablemente es un autómata</h2>
+    <div class="analog-grid" id="analogGrid"></div>
+  </div>
+</section>
+
+<!-- ===================== q7 · AFD vs AFN ===================== -->
+<section class="scene" id="q7" data-x="5100" data-y="2250" data-r="-3" data-title="AFD vs AFN">
+  <div class="inner">
+    <div class="kicker">q7 · Determinista vs. no determinista</div>
+    <h2>¿Y si la máquina pudiera estar en <span class="grad">varios estados a la vez</span>?</h2>
+    <div class="vs-grid">
+      <div class="card">
+        <h3>AFN · autómata finito <span class="grad">no determinista</span></h3>
+        <p class="small">Con una «a» en q0 puede quedarse o avanzar: explora <b>todos los caminos</b> en paralelo.</p>
+        <svg id="nfaFsm"></svg>
+        <div class="vs-state">Estados activos: <b id="nfaSet">{0}</b></div>
+      </div>
+      <div class="card">
+        <h3>AFD · autómata finito <span class="grad">determinista</span></h3>
+        <p class="small">Un solo camino, sin dudas. Cada estado del AFD <b>es un conjunto</b> de estados del AFN.</p>
+        <svg id="dfaFsm"></svg>
+        <div class="vs-state">Estado actual: <b id="dfaCur">{0}</b></div>
+      </div>
+    </div>
+    <div class="vs-ctrl">
+      <div>
+        <div class="small muted" style="margin-bottom:6px">Lenguaje: cadenas de a y b que <b>terminan en «ab»</b> · <span class="mono">(a|b)*ab</span></div>
+        <div class="tape" id="vsTape"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="row"><input class="input" id="vsInput" value="abab" style="width:170px"><button class="btn primary" id="vsStep">Paso ⏭</button><button class="btn" id="vsPlay">▶ Todo</button><button class="btn ghost" id="vsReset">↺</button></div>
+        <div class="row" id="vsPresets"></div>
+      </div>
+      <div class="verdict" id="vsVerdict" style="flex:1;text-align:right"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== q8 · EXPRESIONES REGULARES ===================== -->
+<section class="scene" id="q8" data-x="2700" data-y="2000" data-r="2" data-title="Expresiones regulares">
+  <div class="inner">
+    <div class="kicker">q8 · Expresiones regulares ⇄ autómatas</div>
+    <h2>Teorema de Kleene: lo que una <span class="grad">expresión regular</span> describe, un autómata lo reconoce</h2>
+    <div class="rx-grid">
+      <div class="rx-ops">
+        <div class="card rx-op"><h4>Símbolo <code>a</code></h4><svg id="rxA"></svg></div>
+        <div class="card rx-op"><h4>Concatenación <code>ab</code></h4><svg id="rxCat"></svg></div>
+        <div class="card rx-op"><h4>Unión <code>a|b</code></h4><svg id="rxOr"></svg></div>
+        <div class="card rx-op"><h4>Cerradura de Kleene <code>a*</code></h4><svg id="rxStar"></svg></div>
+      </div>
+      <div class="card" style="display:flex;flex-direction:column;gap:12px">
+        <h3>Especificación léxica de nuestro mini-lenguaje</h3>
+        <div class="row"><span class="muted">Prueba un lexema:</span><input class="input" id="rxInput" value="while" style="width:260px"><div class="row" id="rxPresets"></div></div>
+        <table class="rx-table" id="rxTable"></table>
+        <p class="small muted">Si varias reglas coinciden con la misma longitud, gana la que aparece <b>primero</b> (prioridad). Por eso las palabras clave van antes que los identificadores.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== q9 · CÓMO SE ARMA (intuitivo) ===================== -->
+<section class="scene" id="q9" data-x="300" data-y="2300" data-r="-2" data-title="Cómo se arma (I)">
+  <div class="inner">
+    <div class="kicker">q9 · ¿Cómo se arma un autómata? · receta paso a paso</div>
+    <h2>Construyamos el autómata que reconoce <span class="grad">números</span></h2>
+    <div class="build-grid">
+      <div class="steps" id="buildSteps"></div>
+      <div class="build-right">
+        <svg id="buildFsm"></svg>
+        <div class="tester off card" id="buildTester">
+          <div class="row"><input class="input" id="buildInput" value="3.14" style="width:180px"><button class="btn primary" id="buildRun">▶ Probar</button><div class="row" id="buildPresets"></div></div>
+          <div class="verdict" id="buildVerdict"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== q10 · CÓMO SE ARMA (formal) ===================== -->
+<section class="scene" id="q10" data-x="200" data-y="4600" data-r="2" data-title="Cómo se arma (II)">
+  <div class="inner">
+    <div class="kicker">q10 · Lo que hacen Lex/Flex por dentro · Thompson + subconjuntos + minimización</div>
+    <h2>Regex → <span class="grad">AFN</span> → <span class="grad">AFD</span> → AFD mínimo · <span class="mono" style="font-size:.8em">(a|b)*abb</span></h2>
+    <div class="form-grid">
+      <div class="nfa-box"><svg id="thompFsm"></svg></div>
+      <div class="card form-explain" id="formExplain"></div>
+      <div class="card" style="overflow:hidden">
+        <table class="sub-table" id="subTable"></table>
+      </div>
+      <div class="dfa-box">
+        <div class="cap" id="dfaCap">AFD resultante</div>
+        <svg id="subDfa" class="hid"></svg>
+        <svg id="minDfa" class="hid"></svg>
+        <div class="code-pop hid" id="dfaCode"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== q11 · CONCEPTOS LÉXICOS ===================== -->
+<section class="scene" id="q11" data-x="2600" data-y="4400" data-r="-2" data-title="Token, lexema, patrón">
+  <div class="inner">
+    <div class="kicker">q11 · Análisis léxico</div>
+    <h2>El escáner convierte <span class="grad">caracteres</span> en <span class="grad">tokens</span></h2>
+    <div class="concept-grid">
+      <div class="card concept"><h3>Token <span>la categoría</span></h3><p>Un par ⟨nombre, atributo⟩ que recibe el parser.</p><div class="ex">⟨ID, 1⟩ · ⟨NUM, 18⟩</div></div>
+      <div class="card concept"><h3>Lexema <span>el texto real</span></h3><p>La secuencia de caracteres que coincidió.</p><div class="ex">edad · 18 · &gt;=</div></div>
+      <div class="card concept"><h3>Patrón <span>la regla</span></h3><p>Describe la forma de los lexemas: una expresión regular.</p><div class="ex">[a-zA-Z_][a-zA-Z0-9_]*</div></div>
+    </div>
+    <div class="sentence" id="sentence"></div>
+    <div class="lex-bottom">
+      <div class="card frag"><p>Los <b>espacios</b> y <b>comentarios</b> se descartan: el parser nunca los ve. Cada identificador nuevo va a la <b>tabla de símbolos</b>, y el token guarda su posición. Además, el lexer lleva la cuenta de <b>línea y columna</b> para reportar errores.</p></div>
+      <div class="card frag symtab"><h3 style="font-size:20px">Tabla de símbolos</h3><table><tbody id="sentSym"></tbody></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== q12 · REGLAS ===================== -->
+<section class="scene" id="q12" data-x="5000" data-y="4650" data-r="3" data-title="Reglas del lexer">
+  <div class="inner">
+    <div class="kicker">q12 · Las dos reglas de oro del lexer</div>
+    <h2>¿Cómo decide <span class="grad">dónde corta</span> una palabra?</h2>
+    <div class="rules-top">
+      <div class="card rule"><h3><span class="n">1</span>El lexema más largo gana</h3><p><i>Maximal munch</i>: el lexer sigue leyendo mientras el autómata pueda avanzar, y se queda con el último estado de aceptación. <span class="mono">&gt;=</span> es un solo token, no <span class="mono">&gt;</span> y <span class="mono">=</span>.</p></div>
+      <div class="card rule"><h3><span class="n">2</span>En empate, gana la prioridad</h3><p><span class="mono">if</span> coincide con PALABRA_CLAVE y con ID (misma longitud): gana la regla con mayor prioridad. Pero <span class="mono">iffy</span> es más largo como ID, así que es ID.</p></div>
+    </div>
+    <div class="cases" id="ruleCases"></div>
+    <div class="card strip-wrap">
+      <div class="strip" id="ruleStrip"></div>
+      <div class="strip-msg" id="ruleMsg"></div>
+      <div class="strip-toks" id="ruleToks"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== q13 · SIMULADOR ===================== -->
+<section class="scene" id="q13" data-x="7500" data-y="4450" data-r="0" data-s="1.05" data-title="Simulador del lexer">
+  <div class="inner" style="padding-top:42px">
+    <div class="kicker">q13 · Simulador · un analizador léxico de verdad</div>
+    <h2 style="font-size:42px;margin-bottom:16px">Mira al autómata <span class="grad">leer tu código</span> carácter por carácter</h2>
+    <div class="sim-grid">
+      <div class="sim-top">
+        <div class="sim-ctrl">
+          <select id="simPreset"></select>
+          <button class="btn ghost" id="simEdit">✎ Editar</button>
+          <button class="btn primary" id="simPlay">▶ Reproducir</button>
+          <button class="btn" id="simStep">Paso ⏭</button>
+          <button class="btn ghost" id="simReset">↺</button>
+          <span class="small muted">velocidad</span><input type="range" id="simSpeed" min="1" max="10" value="5">
+        </div>
+        <div class="sim-src">
+          <div class="sim-view" id="simView"></div>
+          <textarea id="simText" spellcheck="false" style="display:none"></textarea>
+        </div>
+        <div class="sim-status" id="simStatus"></div>
+        <div class="sim-bottom">
+          <div class="sim-toks" id="simToks"></div>
+          <div class="card sim-sym"><h4>Tabla de símbolos</h4><div id="simSym"></div></div>
+        </div>
+      </div>
+      <div class="sim-dfa">
+        <svg id="lexFsm"></svg>
+        <div class="legend">
+          <span class="c-KW">palabra clave</span><span class="c-ID">identificador</span><span class="c-NUM">número</span><span class="c-CADENA">cadena</span><span class="c-REL">relacional</span><span class="c-OP">aritmético</span><span class="c-PUNT">puntuación</span><span class="c-ERR" style="text-decoration:none">error</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== q14 · QUIZ ===================== -->
+<section class="scene" id="q14" data-x="10000" data-y="4700" data-r="-3" data-title="¿Quién atrapa el error?">
+  <div class="inner">
+    <div class="kicker">q14 · Juego: ¿quién atrapa el error?</div>
+    <h2>No todos los errores son <span class="grad">léxicos</span> <span class="score" id="quizScore"></span></h2>
+    <div class="quiz-grid" id="quizGrid"></div>
+    <div class="recovery card">
+      <p><b style="color:var(--fuchsia)">Recuperación en modo pánico:</b> cuando el lexer encuentra algo que no reconoce, reporta el error con línea y columna, <b>descarta caracteres</b> hasta poder formar un token válido y sigue leyendo. Así puede reportar varios errores en una sola compilación.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== q15 · AUTOCORRECTOR ===================== -->
+<section class="scene" id="q15" data-x="10000" data-y="7100" data-r="2" data-title="Autocorrector">
+  <div class="inner">
+    <div class="kicker">q15 · ¿Y el autocorrector?</div>
+    <h2>Un diccionario también es un <span class="grad">autómata</span> (un trie)</h2>
+    <div class="ac-grid">
+      <div class="ac-left">
+        <div class="row"><button class="btn on" data-dict="kw">Palabras clave</button><button class="btn" data-dict="es">Español</button></div>
+        <input class="input ac-input" id="acInput" value="whlie" spellcheck="false" autocomplete="off">
+        <div class="verdict" id="acVerdict"></div>
+        <div class="sugs" id="acSugs"></div>
+        <p class="small muted">Cada letra es una transición. Si no existe la transición, caes al estado de error ∅ y entonces se buscan las palabras a menor <b>distancia de edición</b> (insertar, borrar, cambiar o intercambiar letras). Los <b>autómatas de Levenshtein</b> (Schulz y Mihov, 2002) hacen esta búsqueda muy rápido.</p>
+      </div>
+      <div class="ac-right"><svg id="trieFsm"></svg></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== q16 · HERRAMIENTAS ===================== -->
+<section class="scene" id="q16" data-x="7500" data-y="6900" data-r="-2" data-title="Herramientas">
+  <div class="inner">
+    <div class="kicker">q16 · En la vida real</div>
+    <h2>Nadie dibuja el autómata a mano: lo <span class="grad">generan</span> herramientas</h2>
+    <div class="tools-grid">
+      <div class="tool frag"><h3>Flex <span class="small muted">(C)</span></h3>
+<pre><span class="kw">%%</span>
+<span class="rx">"if"|"else"|"while"</span>      { <span class="kw">return</span> <span class="tk">KEYWORD</span>; }
+<span class="rx">[a-zA-Z_][a-zA-Z0-9_]*</span>   { <span class="kw">return</span> <span class="tk">ID</span>; }
+<span class="rx">[0-9]+("."[0-9]+)?</span>       { <span class="kw">return</span> <span class="tk">NUM</span>; }
+<span class="rx">"&gt;="|"&lt;="|"=="|"!="</span>      { <span class="kw">return</span> <span class="tk">RELOP</span>; }
+<span class="rx">"//".*</span>                   { <span class="cm">/* comentario: ignorar */</span> }
+<span class="rx">[ \t\n]+</span>                 { <span class="cm">/* espacios: ignorar */</span> }
+<span class="rx">.</span>                        { error(<span class="rx">"carácter inválido"</span>); }
+<span class="kw">%%</span></pre>
+      </div>
+      <div class="tool frag"><h3>ANTLR 4 <span class="small muted">(Java, Python, C#…)</span></h3>
+<pre><span class="kw">lexer grammar</span> MiniLexer;
+
+<span class="tk">IF</span>      : <span class="rx">'if'</span> ;
+<span class="tk">WHILE</span>   : <span class="rx">'while'</span> ;
+<span class="tk">ID</span>      : <span class="rx">[a-zA-Z_] [a-zA-Z0-9_]*</span> ;
+<span class="tk">NUM</span>     : <span class="rx">[0-9]+ ('.' [0-9]+)?</span> ;
+<span class="tk">GE</span>      : <span class="rx">'&gt;='</span> ;
+<span class="tk">COMMENT</span> : <span class="rx">'//' ~[\r\n]*</span> -&gt; <span class="kw">skip</span> ;
+<span class="tk">WS</span>      : <span class="rx">[ \t\r\n]+</span>   -&gt; <span class="kw">skip</span> ;</pre>
+      </div>
+    </div>
+    <div class="tools-foot">
+      <div class="card frag"><b>¿Qué generan?</b> Una tabla de transiciones (el AFD) y un bucle que la recorre. Es lo mismo que hicimos en q10.</div>
+      <div class="card frag"><b>¿Y los compiladores grandes?</b> GCC, Clang y Go usan lexers escritos a mano por velocidad y mejores mensajes de error… pero por dentro siguen siendo autómatas: un <span class="mono">switch</span> por estado.</div>
+      <div class="card frag"><b>¿Dónde más?</b> El resaltado de sintaxis de tu editor, <span class="mono">grep</span>, la validación de formularios y los motores de expresiones regulares.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== q17 · RESUMEN ===================== -->
+<section class="scene" id="q17" data-x="5000" data-y="7150" data-r="3" data-title="Resumen">
+  <div class="inner">
+    <div class="kicker">q17 · Entonces…</div>
+    <h2>¿Cómo sabe la computadora que <span class="squiggle">escribiste mal</span> una palabra?</h2>
+    <ul class="sum-list">
+      <li class="frag"><span class="ck">1</span>Un autómata finito es una máquina que solo recuerda su estado: torniquetes, semáforos, expendedoras… y compiladores.</li>
+      <li class="frag"><span class="ck">2</span>Cada tipo de token se describe con una expresión regular, que se convierte en AFN (Thompson), luego en AFD (subconjuntos) y se minimiza.</li>
+      <li class="frag"><span class="ck">3</span>El lexer recorre ese AFD, aplica «el lexema más largo» y la prioridad, y entrega tokens al parser.</li>
+      <li class="frag"><span class="ck">4</span>Si el autómata no puede formar ningún token, es un error léxico: <span class="mono">@</span>, cadenas sin cerrar, <span class="mono">3.14.15</span>.</li>
+    </ul>
+    <div class="answer frag">La computadora no «sabe» nada: un autómata intenta reconocer tu palabra. Si cae al estado de error, ahí está el error léxico. Y si <span class="mono">whlie</span> parece un identificador válido, lo atrapan el parser, el análisis semántico… o un autocorrector, que también es un autómata.</div>
+  </div>
+</section>
+
+<!-- ===================== q18 · REFERENCIAS ===================== -->
+<section class="scene" id="q18" data-x="2600" data-y="6950" data-r="-2" data-title="Referencias">
+  <div class="inner">
+    <div class="kicker">q18 · Bibliografía y referencias</div>
+    <h2 style="font-size:40px">Para seguir aprendiendo</h2>
+    <ol class="refs">
+      <li>Aho, A. V., Lam, M. S., Sethi, R. y Ullman, J. D. (2006). <i>Compilers: Principles, Techniques, and Tools</i> (2.ª ed.). Addison-Wesley. Cap. 3: Lexical Analysis.</li>
+      <li>Hopcroft, J. E., Motwani, R. y Ullman, J. D. (2006). <i>Introduction to Automata Theory, Languages, and Computation</i> (3.ª ed.). Pearson.</li>
+      <li>Sipser, M. (2012). <i>Introduction to the Theory of Computation</i> (3.ª ed.). Cengage Learning.</li>
+      <li>Cooper, K. D. y Torczon, L. (2011). <i>Engineering a Compiler</i> (2.ª ed.). Morgan Kaufmann. Cap. 2: Scanners.</li>
+      <li>Nystrom, R. (2021). <i>Crafting Interpreters</i>. Genever Benning. Cap. 4: Scanning.</li>
+      <li>Turing, A. M. (1936). On computable numbers, with an application to the Entscheidungsproblem. <i>Proc. London Mathematical Society</i>, s2-42, 230–265.</li>
+      <li>McCulloch, W. S. y Pitts, W. (1943). A logical calculus of the ideas immanent in nervous activity. <i>Bulletin of Mathematical Biophysics</i>, 5, 115–133.</li>
+      <li>Kleene, S. C. (1956). Representation of events in nerve nets and finite automata. En <i>Automata Studies</i> (pp. 3–41). Princeton University Press.</li>
+      <li>Mealy, G. H. (1955). A method for synthesizing sequential circuits. <i>Bell System Technical Journal</i>, 34(5), 1045–1079.</li>
+      <li>Moore, E. F. (1956). Gedanken-experiments on sequential machines. En <i>Automata Studies</i> (pp. 129–153). Princeton University Press.</li>
+      <li>Chomsky, N. (1956). Three models for the description of language. <i>IRE Transactions on Information Theory</i>, 2(3), 113–124.</li>
+      <li>Rabin, M. O. y Scott, D. (1959). Finite automata and their decision problems. <i>IBM Journal of Research and Development</i>, 3(2), 114–125.</li>
+      <li>Thompson, K. (1968). Regular expression search algorithm. <i>Communications of the ACM</i>, 11(6), 419–422.</li>
+      <li>Lesk, M. E. y Schmidt, E. (1975). <i>Lex — A Lexical Analyzer Generator</i>. Bell Laboratories, CSTR 39.</li>
+      <li>Schulz, K. U. y Mihov, S. (2002). Fast string correction with Levenshtein automata. <i>Int. Journal on Document Analysis and Recognition</i>, 5(1), 67–85.</li>
+      <li>Cox, R. (2007). <i>Regular Expression Matching Can Be Simple And Fast</i>. swtch.com/~rsc/regexp/regexp1.html</li>
+      <li>Al-Jazari, I. (1206). <i>Libro del conocimiento de ingeniosos dispositivos mecánicos</i>.</li>
+      <li>Eddy, W. (Ed.) (2022). <i>RFC 9293: Transmission Control Protocol</i>. IETF.</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ===================== q19 · CRÉDITOS ===================== -->
+<section class="scene final" id="q19" data-x="200" data-y="7100" data-r="0" data-s="1.15" data-title="Créditos">
+  <div class="inner credits">
+    <div class="kicker">q19 · estado de aceptación ◎</div>
+    <h2 class="grad">¡Gracias por vernos!</h2>
+    <div class="cr-names" id="crNames"></div>
+    <div class="cr-uni" id="crUni"></div>
+    <div class="cr-course" id="crCourse"></div>
+    <div class="cr-lic" id="crLic"></div>
+  </div>
+</section>
+
+</div>
+</div>
+
+<div id="hud">
+  <button class="navb" id="hudPrev" title="Anterior (←)">←</button>
+  <div id="hudStates"></div>
+  <span id="hudTitle"></span>
+  <button class="navb" id="hudMap" title="Mapa (M)">◎</button>
+  <button class="navb" id="hudNext" title="Siguiente (→)">→</button>
+</div>
+<div id="notes"></div>
+
+<script src="js/config.js"></script>
+<script src="js/fsm.js"></script>
+<script src="js/lexer.js"></script>
+<script src="js/intro.js"></script>
+<script src="js/automatas.js"></script>
+<script src="js/construccion.js"></script>
+<script src="js/final.js"></script>
+<script src="js/camara.js"></script>
+</body>
+</html>
